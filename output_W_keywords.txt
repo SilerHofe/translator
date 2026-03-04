@@ -1,0 +1,16 @@
+ТАБЛИЦА СЛУЖЕБНЫХ СЛОВ (W)
+Слово                Код
+─────────────────────────
+var                  1
+function             2
+return               3
+if                   4
+else                 5
+while                6
+for                  7
+new                  8
+true                 9
+false                10
+null                 11
+console              12
+log                  13
