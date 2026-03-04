@@ -1,0 +1,2 @@
+# translator
+js->r
