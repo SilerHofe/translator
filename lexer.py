@@ -1,38 +1,29 @@
 """
 Лабораторная работа №1: Лексический анализатор
-Транслятор с языка JavaScript на язык R
-Вариант 10: Входной язык - JavaScript, Выходной язык - R
+Транслятор с языка JavaScript на язык R  |  Вариант 10
 
-Классы лексем:
-  W - служебные слова
-  I - идентификаторы
-  O - операции
-  R - разделители
-  N - числовые константы
-  C - символьные/строковые константы
+Классы лексем (Таблица 1.1 методички):
+  W - служебные слова       (постоянная таблица)
+  I - идентификаторы        (временная таблица 1.6)
+  O - операции              (постоянная таблица)
+  R - разделители           (постоянная таблица)
+  N - числовые константы    (временная таблица 1.5)
+  C - строковые константы   (временная таблица)
 
-Архитектура: паттерн "Состояние" (State pattern)
-Состояния сканера (диаграмма состояний, раздел 1.4 методички):
-  StartState            - начальное состояние S
-  WordState             - чтение буквенной последовательности
-  IdentificatorState    - чтение идентификатора (буквы+цифры+_)
-  DigitState            - чтение целой числовой константы
-  DotDigitState         - чтение числа с точкой / плавающей точкой
-  CharConstState        - чтение строковой/символьной константы
-  PartTwoLitState       - начало двулитерной операции (/ = < > !)
-  CommentsState         - однострочный комментарий //
-  MultiCommentState     - многострочный комментарий /*
-  MultiCommentStopState - ожидание закрытия */ 
-  SeparatorState        - разделитель
-  OperationState        - однолитерная операция
+Таблица идентификаторов строится по образцу Таблицы 1.6 методички:
+  Код | Идентификатор | Номер процедуры | Уровень процедуры |
+  Номер идент. в процедуре | Тип идентификатора | Объём памяти
+
+ВАЖНО (методичка стр. 13): лексер только ЗАВОДИТ записи в таблице 1.6
+(заполняет Код и Имя). Остальные поля заполняются на этапе
+синтаксического анализа (Лабораторная работа №2).
 """
 
 # ============================================================
-#  ПОСТОЯННЫЕ ТАБЛИЦЫ ЛЕКСЕМ (определяются входным языком JS)
+#  ПОСТОЯННЫЕ ТАБЛИЦЫ (определяются входным языком — JS)
 # ============================================================
 
 # Таблица служебных слов W
-# console и log — служебные слова (аналогично System/out/println в Java у коллеги)
 KEYWORDS = {
     'var':      1,
     'function': 2,
@@ -92,6 +83,45 @@ SEPARATORS = {
 
 
 # ============================================================
+#  ЗАПИСЬ ТАБЛИЦЫ ИДЕНТИФИКАТОРОВ — Таблица 1.6 методички
+# ============================================================
+
+class IdRecord:
+    """
+    Одна строка таблицы идентификаторов (Таблица 1.6).
+
+    Лексер (Лаба 1) заполняет:
+        code            — порядковый номер в таблице
+        name            — имя идентификатора
+        nesting_level   — уровень вложенности в момент первого появления
+                          (0 = глобальный, 1 = внутри первого блока {...}, и т.д.)
+        id_type         — тип: 'unknown' (уточняется в Лабе 2)
+
+    Лаба 2 дополнит:
+        proc_num    — номер процедуры/функции
+        proc_level  — уровень процедуры
+        id_in_proc  — порядковый номер идентификатора в процедуре
+        mem_size    — объём памяти
+    """
+    def __init__(self, code: int, name: str, nesting_level: int = 0):
+        # ── заполняет Лаба 1 ──
+        self.code           = code
+        self.name           = name
+        self.nesting_level  = nesting_level  # уровень вложенности { }
+        self.id_type        = 'unknown'      # variable | function | parameter | unknown
+
+        # ── заполнит Лаба 2 ──
+        self.proc_num   = None
+        self.proc_level = None
+        self.id_in_proc = None
+        self.mem_size   = None
+
+    def __repr__(self):
+        return (f"IdRecord(code={self.code}, name={self.name!r}, "
+                f"level={self.nesting_level}, type={self.id_type!r})")
+
+
+# ============================================================
 #  ТОКЕН
 # ============================================================
 
@@ -114,14 +144,14 @@ class Token:
 
 class BaseState:
     def __init__(self, lexeme: str, analyzer):
-        self.lexeme = lexeme
+        self.lexeme   = lexeme
         self.analyzer = analyzer
 
     def execute(self, symbol: str):
         raise NotImplementedError
 
     def execute_last(self):
-        """Вызывается в конце каждой строки."""
+        """Вызывается в конце каждой строки входного текста."""
         pass
 
     def _add_char(self, symbol: str):
@@ -129,7 +159,7 @@ class BaseState:
 
 
 # ============================================================
-#  СОСТОЯНИЯ СКАНЕРА
+#  СОСТОЯНИЯ СКАНЕРА (диаграмма состояний — раздел 1.4)
 # ============================================================
 
 class StartState(BaseState):
@@ -137,45 +167,23 @@ class StartState(BaseState):
 
     def execute(self, symbol: str):
         a = self.analyzer
-
         if symbol.isalpha() or symbol == '_':
-            state = WordState('', a)
-            a.set_state(state)
-            state.execute(symbol)
-
+            s = WordState('', a); a.set_state(s); s.execute(symbol)
         elif symbol == '$':
-            state = IdentificatorState('', a)
-            a.set_state(state)
-            state.execute(symbol)
-
+            s = IdentificatorState('', a); a.set_state(s); s.execute(symbol)
         elif symbol.isdigit():
-            state = DigitState('', a)
-            a.set_state(state)
-            state.execute(symbol)
-
+            s = DigitState('', a); a.set_state(s); s.execute(symbol)
         elif symbol == '.':
-            # Может быть разделитель R6 (console.log) или начало числа (.25)
-            # Решается в DotState при получении следующего символа
-            state = DotState('.', a)
-            a.set_state(state)
-
+            a.set_state(DotState('.', a))
         elif symbol in ('"', "'"):
-            state = CharConstState(symbol, a)
-            a.set_state(state)
-
+            a.set_state(CharConstState(symbol, a))
         elif symbol in PART_OF_TWO_LIT:
-            state = PartTwoLitState(symbol, a)
-            a.set_state(state)
-
+            a.set_state(PartTwoLitState(symbol, a))
         elif symbol in SEPARATORS:
-            state = SeparatorState('', a)
-            a.set_state(state)
-            state.execute(symbol)
-
+            s = SeparatorState('', a); a.set_state(s); s.execute(symbol)
         elif symbol in OPERATIONS:
-            state = OperationState('', a)
-            a.set_state(state)
-            state.execute(symbol)
+            s = OperationState('', a); a.set_state(s); s.execute(symbol)
+        # иначе — неизвестный символ, остаёмся в S (или можно добавить ошибку)
 
     def execute_last(self):
         pass
@@ -183,74 +191,23 @@ class StartState(BaseState):
 
 class WordState(BaseState):
     """
-    Чтение слова, начинающегося с буквы.
-    Семантическая процедура 1:
-      — если слово в таблице служебных слов → W-лексема
-      — иначе → занести в таблицу идентификаторов → I-лексема
+    Чтение буквенного слова.
+    Семантическая процедура 2 (методичка стр. 17-18):
+      ищем в таблице служебных слов;
+      если не найдено — выполняем сем. процедуру 1 (таблица идентификаторов).
     """
 
     def execute(self, symbol: str):
         a = self.analyzer
         if symbol.isalpha():
             self._add_char(symbol)
-
         elif symbol.isdigit() or symbol == '_':
             self._add_char(symbol)
             a.set_state(IdentificatorState(self.lexeme, a))
-
-        elif symbol in SEPARATORS or symbol in PART_OF_TWO_LIT or symbol in OPERATIONS:
-            self._sem1()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
-        elif symbol in ('"', "'"):
-            self._sem1()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
-        else:
-            self._add_char(symbol)
-
-    def execute_last(self):
-        if self.lexeme:
-            self._sem1()
-            self.analyzer.set_state(StartState('', self.analyzer))
-
-    def _sem1(self):
-        a = self.analyzer
-        word = self.lexeme
-        if word in KEYWORDS:
-            a.add_token(Token('W', KEYWORDS[word], word))
-        else:
-            code = a.get_or_add_id(word)
-            a.add_token(Token('I', code, word))
-
-
-class IdentificatorState(BaseState):
-    """
-    Чтение идентификатора (буквы, цифры, _).
-    Семантическая процедура 2: занести в таблицу идентификаторов → I-лексема.
-    """
-
-    def execute(self, symbol: str):
-        a = self.analyzer
-        if symbol.isalnum() or symbol == '_':
-            self._add_char(symbol)
-
-        elif symbol in SEPARATORS or symbol in PART_OF_TWO_LIT or symbol in OPERATIONS:
+        elif (symbol in SEPARATORS or symbol in PART_OF_TWO_LIT
+              or symbol in OPERATIONS or symbol in ('"', "'")):
             self._sem2()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
-        elif symbol in ('"', "'"):
-            self._sem2()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
         else:
             self._add_char(symbol)
 
@@ -260,31 +217,66 @@ class IdentificatorState(BaseState):
             self.analyzer.set_state(StartState('', self.analyzer))
 
     def _sem2(self):
+        """Сем. процедура 2: поиск в таблице служебных слов."""
         a = self.analyzer
-        code = a.get_or_add_id(self.lexeme)
-        a.add_token(Token('I', code, self.lexeme))
+        word = self.lexeme
+        if word in KEYWORDS:
+            a.add_token(Token('W', KEYWORDS[word], word))
+        else:
+            self._sem1(word)
+
+    def _sem1(self, word: str):
+        """Сем. процедура 1: занести в таблицу идентификаторов."""
+        a = self.analyzer
+        rec = a.get_or_add_id(word)
+        a.add_token(Token('I', rec.code, word))
+
+
+class IdentificatorState(BaseState):
+    """
+    Чтение идентификатора (буквы + цифры + _).
+    Семантическая процедура 1.
+    """
+
+    def execute(self, symbol: str):
+        a = self.analyzer
+        if symbol.isalnum() or symbol == '_':
+            self._add_char(symbol)
+        elif (symbol in SEPARATORS or symbol in PART_OF_TWO_LIT
+              or symbol in OPERATIONS or symbol in ('"', "'")):
+            self._sem1()
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
+        else:
+            self._add_char(symbol)
+
+    def execute_last(self):
+        if self.lexeme:
+            self._sem1()
+            self.analyzer.set_state(StartState('', self.analyzer))
+
+    def _sem1(self):
+        """Сем. процедура 1: занести в таблицу идентификаторов."""
+        a = self.analyzer
+        rec = a.get_or_add_id(self.lexeme)
+        a.add_token(Token('I', rec.code, self.lexeme))
 
 
 class DigitState(BaseState):
     """
-    Чтение целой числовой константы.
-    Семантическая процедура 3: занести в таблицу чисел → N-лексема.
+    Чтение целого числа.
+    Семантическая процедура 3.
     """
 
     def execute(self, symbol: str):
         a = self.analyzer
         if symbol.isdigit() or symbol in ('e', 'E', '+', '-'):
             self._add_char(symbol)
-
         elif symbol == '.':
             a.set_state(DotDigitState(self.lexeme + '.', a))
-
-        elif symbol in SEPARATORS or symbol in PART_OF_TWO_LIT or symbol in OPERATIONS:
+        elif (symbol in SEPARATORS or symbol in PART_OF_TWO_LIT
+              or symbol in OPERATIONS):
             self._sem3()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
         else:
             self._add_char(symbol)
 
@@ -294,9 +286,33 @@ class DigitState(BaseState):
             self.analyzer.set_state(StartState('', self.analyzer))
 
     def _sem3(self):
+        """Сем. процедура 3: занести в таблицу числовых констант."""
         a = self.analyzer
         code = a.get_or_add_num(self.lexeme)
         a.add_token(Token('N', code, self.lexeme))
+
+
+class DotState(BaseState):
+    """
+    Промежуточное состояние после '.':
+      следующая цифра → начало числа (.25) → DotDigitState
+      иначе           → разделитель R6 (console.log)
+    """
+
+    def execute(self, symbol: str):
+        a = self.analyzer
+        if symbol.isdigit():
+            a.set_state(DotDigitState('.' + symbol, a))
+        else:
+            # Точка — разделитель R6
+            a.add_token(Token('R', SEPARATORS['.'], '.'))
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
+
+    def execute_last(self):
+        # Точка в конце строки — разделитель
+        a = self.analyzer
+        a.add_token(Token('R', SEPARATORS['.'], '.'))
+        a.set_state(StartState('', a))
 
 
 class DotDigitState(BaseState):
@@ -309,19 +325,10 @@ class DotDigitState(BaseState):
         a = self.analyzer
         if symbol.isdigit() or symbol in ('e', 'E', '+', '-'):
             self._add_char(symbol)
-
-        elif symbol.isalpha():
+        elif (symbol in SEPARATORS or symbol in PART_OF_TWO_LIT
+              or symbol in OPERATIONS or symbol.isalpha()):
             self._sem3()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
-        elif symbol in SEPARATORS or symbol in PART_OF_TWO_LIT or symbol in OPERATIONS:
-            self._sem3()
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
         else:
             self._add_char(symbol)
 
@@ -336,43 +343,15 @@ class DotDigitState(BaseState):
         a.add_token(Token('N', code, self.lexeme))
 
 
-class DotState(BaseState):
-    """
-    Промежуточное состояние после символа '.'.
-    Если следующий символ — цифра → это начало числа (.25) → DotDigitState.
-    Иначе → это разделитель R6 (точка доступа console.log).
-    """
-
-    def execute(self, symbol: str):
-        a = self.analyzer
-        if symbol.isdigit():
-            # Начало числа вида .25
-            state = DotDigitState('.' + symbol, a)
-            a.set_state(state)
-        else:
-            # Разделитель '.' — R6
-            a.add_token(Token('R', SEPARATORS['.'], '.'))
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
-
-    def execute_last(self):
-        # Точка в конце строки — разделитель
-        a = self.analyzer
-        a.add_token(Token('R', SEPARATORS['.'], '.'))
-        a.set_state(StartState('', a))
-
-
 class CharConstState(BaseState):
     """
-    Чтение строковой/символьной константы (в " " или ' ').
-    Семантическая процедура 5: занести в таблицу строк → C-лексема.
+    Чтение строковой/символьной константы (" " или ' ').
+    Семантическая процедура 3 (для констант).
     """
 
     def execute(self, symbol: str):
         a = self.analyzer
-        opening = self.lexeme[0]
-        if symbol == opening:
+        if symbol == self.lexeme[0]:          # закрывающая кавычка
             content = self.lexeme[1:]
             code = a.get_or_add_str(content)
             a.add_token(Token('C', code, content))
@@ -386,66 +365,59 @@ class CharConstState(BaseState):
 
 class PartTwoLitState(BaseState):
     """
-    Ожидание второго символа потенциально двулитерной операции.
-    Символы-инициаторы: / = < > !
-    Семантическая процедура 8.
+    Ожидание второго символа двулитерной операции (/ = < > !).
+    Семантические процедуры 7 и 8.
     """
 
     def execute(self, symbol: str):
         a = self.analyzer
         two = self.lexeme + symbol
 
-        if two in OPERATIONS:
-            # Двулитерная операция: == != <= >=
+        if two in OPERATIONS:                 # двулитерная операция: == != <= >=
             a.add_token(Token('O', OPERATIONS[two], two))
             a.set_state(StartState('', a))
-
-        elif two == '//':
+        elif two == '//':                     # однострочный комментарий
             a.set_state(CommentsState('', a))
-
-        elif two == '/*':
+        elif two == '/*':                     # многострочный комментарий
             a.set_state(MultiCommentState('', a))
-
-        else:
-            # Первый символ — однолитерная операция, второй — заново
-            first = self.lexeme
-            if first in OPERATIONS:
-                a.add_token(Token('O', OPERATIONS[first], first))
-            start = StartState('', a)
-            a.set_state(start)
-            start.execute(symbol)
+        else:                                 # первый символ — однолитерная операция
+            if self.lexeme in OPERATIONS:
+                a.add_token(Token('O', OPERATIONS[self.lexeme], self.lexeme))
+            s = StartState('', a); a.set_state(s); s.execute(symbol)
 
     def execute_last(self):
         a = self.analyzer
-        first = self.lexeme
-        if first in OPERATIONS:
-            a.add_token(Token('O', OPERATIONS[first], first))
+        if self.lexeme in OPERATIONS:
+            a.add_token(Token('O', OPERATIONS[self.lexeme], self.lexeme))
         a.set_state(StartState('', a))
 
 
 class CommentsState(BaseState):
-    """Однострочный комментарий // — всё до конца строки игнорируется."""
+    """
+    Однострочный комментарий //.
+    Семантическая процедура 5: удалить (игнорировать) до конца строки.
+    """
 
     def execute(self, symbol: str):
-        pass  # Сем. процедура 7: все символы игнорируются
+        pass   # все символы игнорируются
 
     def execute_last(self):
         self.analyzer.set_state(StartState('', self.analyzer))
 
 
 class MultiCommentState(BaseState):
-    """Многострочный комментарий /* — ждём *."""
+    """Многострочный комментарий /* ... */ — ждём *."""
 
     def execute(self, symbol: str):
         if symbol == '*':
             self.analyzer.set_state(MultiCommentStopState('*', self.analyzer))
 
     def execute_last(self):
-        pass  # комментарий продолжается на следующей строке
+        pass   # комментарий продолжается на следующей строке
 
 
 class MultiCommentStopState(BaseState):
-    """Ждём / после * для закрытия /* комментария."""
+    """Ждём / после * для закрытия комментария."""
 
     def execute(self, symbol: str):
         a = self.analyzer
@@ -461,14 +433,19 @@ class MultiCommentStopState(BaseState):
 class SeparatorState(BaseState):
     """
     Разделитель.
-    Семантическая процедура 4: пробел не кодируется.
-    Семантическая процедура 9: не-пробельный разделитель → R-лексема.
+    Сем. процедура 4: пробел/табуляция — не кодируются, в выходную цепочку не попадают.
+    Сем. процедура 9: остальные разделители → R-лексема.
     """
 
     def execute(self, symbol: str):
         a = self.analyzer
         if symbol not in (' ', '\t'):
             a.add_token(Token('R', SEPARATORS[symbol], symbol))
+            # Отслеживаем вложенность блоков для таблицы идентификаторов
+            if symbol == '{':
+                a.increment_nesting()
+            elif symbol == '}':
+                a.decrement_nesting()
         a.set_state(StartState('', a))
 
     def execute_last(self):
@@ -476,7 +453,10 @@ class SeparatorState(BaseState):
 
 
 class OperationState(BaseState):
-    """Однолитерная операция."""
+    """
+    Однолитерная операция.
+    Семантическая процедура 6.
+    """
 
     def execute(self, symbol: str):
         a = self.analyzer
@@ -494,8 +474,14 @@ class OperationState(BaseState):
 class LexicalAnalyzer:
     """
     Лексический анализатор для подмножества JavaScript.
-    Обрабатывает входной текст построчно,
-    формирует таблицы лексем и внутреннее представление.
+    Обрабатывает входной текст построчно.
+
+    Строит:
+      — Постоянные таблицы: KEYWORDS, OPERATIONS, SEPARATORS (определены выше)
+      — Временную таблицу идентификаторов (Таблица 1.6): self.id_records
+      — Временную таблицу числовых констант (Таблица 1.5): self.num_table
+      — Временную таблицу строковых констант: self.str_table
+      — Внутреннее представление: self.tokens_by_line
     """
 
     def __init__(self):
@@ -507,14 +493,23 @@ class LexicalAnalyzer:
         self.tokens_by_line: list[list[Token]] = []
         self.errors: list[str] = []
 
-        # Временные таблицы (создаются в процессе анализа)
-        self.id_table: dict[str, int] = {}
-        self.num_table: dict[str, int] = {}
-        self.str_table: dict[str, int] = {}
+        # Временная таблица идентификаторов — Таблица 1.6
+        # Список IdRecord в порядке первого появления
+        self.id_records: list[IdRecord] = []
+        self._id_map: dict[str, IdRecord] = {}   # имя → запись (для быстрого поиска)
 
-        self._id_counter = 0
-        self._num_counter = 0
-        self._str_counter = 0
+        # Временная таблица числовых констант — Таблица 1.5
+        # Запись: значение → (код, тип)  тип: 'integer' | 'fixed-point' | 'floating-point'
+        self.num_table: dict[str, tuple] = {}
+
+        # Временная таблица строковых констант
+        # Запись: значение → (код, тип)  тип всегда 'string'
+        self.str_table: dict[str, tuple] = {}
+
+        self._id_counter    = 0
+        self._num_counter   = 0
+        self._str_counter   = 0
+        self._nesting_level = 0   # текущий уровень вложенности { }
 
     # ── управление состоянием ──
 
@@ -524,49 +519,147 @@ class LexicalAnalyzer:
     def add_token(self, token: Token):
         self.tokens.append(token)
         self._current_line_tokens.append(token)
+        # Определяем тип идентификатора по предыдущему токену
+        self._resolve_id_type(token)
+
+    def _resolve_id_type(self, token: Token):
+        """
+        Определяет тип данных переменной по присваиванию (Лаба 1).
+
+        Три типа по условию преподавателя (срез языка):
+          integer      — правая часть присваивания — целое число (N, тип integer)
+          fixed-point  — правая часть — число с точкой (N, тип fixed-point
+                         или floating-point — оба с точкой/экспонентой)
+          string       — правая часть — строковая константа (C)
+
+        Паттерн: I  O12(=)  N/C  →  обновляем тип идентификатора слева
+        Вызывается после добавления каждого токена; работает когда
+        только что добавлен N или C и перед ним стоит O12(=) и I.
+        """
+        # Нас интересует момент когда добавлена числовая или строковая константа
+        if token.token_class not in ('N', 'C'):
+            return
+
+        # Нужно минимум 3 токена: I  O12  N/C
+        if len(self.tokens) < 3:
+            return
+
+        assign = self.tokens[-2]   # должен быть O12 (=)
+        ident  = self.tokens[-3]   # должен быть I (идентификатор)
+
+        if not (assign.token_class == 'O' and assign.code == 12):
+            return
+        if ident.token_class != 'I':
+            return
+
+        rec = self._id_map.get(ident.value)
+        if rec is None:
+            return
+
+        # Тип уже определён — не перезаписываем
+        if rec.id_type != 'unknown':
+            return
+
+        # Определяем тип по правой части
+        if token.token_class == 'C':
+            rec.id_type = 'string'
+        elif token.token_class == 'N':
+            # берём тип из таблицы числовых констант
+            entry = self.num_table.get(token.value)
+            if entry:
+                _, num_type = entry
+                if num_type == 'integer':
+                    rec.id_type = 'integer'
+                else:
+                    # fixed-point и floating-point → оба "с точкой"
+                    rec.id_type = 'fixed-point' 
 
     def add_error(self, msg: str):
         self.errors.append(msg)
 
-    # ── временные таблицы ──
+    # ── Таблица 1.6: идентификаторы ──
 
-    def get_or_add_id(self, name: str) -> int:
-        if name not in self.id_table:
+    def get_or_add_id(self, name: str) -> IdRecord:
+        """
+        Сем. процедура 1/2: поиск в таблице идентификаторов.
+        Если не найден — создаём запись с текущим уровнем вложенности.
+        Тип остаётся 'unknown' — уточняется в Лабе 2.
+        """
+        if name not in self._id_map:
             self._id_counter += 1
-            self.id_table[name] = self._id_counter
-        return self.id_table[name]
+            rec = IdRecord(
+                code=self._id_counter,
+                name=name,
+                nesting_level=self._nesting_level,
+            )
+            self.id_records.append(rec)
+            self._id_map[name] = rec
+        return self._id_map[name]
+
+    def increment_nesting(self):
+        """Вызывается при встрече '{' — увеличивает уровень вложенности."""
+        self._nesting_level += 1
+
+    def decrement_nesting(self):
+        """Вызывается при встрече '}' — уменьшает уровень вложенности."""
+        if self._nesting_level > 0:
+            self._nesting_level -= 1
+
+    # ── Таблица 1.5: числовые константы ──
+
+    @staticmethod
+    def _num_type(value: str) -> str:
+        """Определяет тип числовой константы по её строковому значению."""
+        v = value.lower()
+        if 'e' in v:
+            return 'floating-point'
+        elif '.' in v:
+            return 'fixed-point'
+        else:
+            return 'integer'
 
     def get_or_add_num(self, value: str) -> int:
+        """Сем. процедура 3: занести в таблицу числовых констант с типом."""
         if value not in self.num_table:
             self._num_counter += 1
-            self.num_table[value] = self._num_counter
-        return self.num_table[value]
+            self.num_table[value] = (self._num_counter, self._num_type(value))
+        return self.num_table[value][0]
+
+    # ── Таблица строковых констант ──
 
     def get_or_add_str(self, value: str) -> int:
+        """Занести строковую константу в таблицу с типом 'string'."""
         if value not in self.str_table:
             self._str_counter += 1
-            self.str_table[value] = self._str_counter
-        return self.str_table[value]
+            self.str_table[value] = (self._str_counter, 'string')
+        return self.str_table[value][0]
+
+    # ── обратная совместимость ──
+
+    @property
+    def id_table(self) -> dict:
+        """Возвращает {имя: код} — для обратной совместимости с main.py."""
+        return {rec.name: rec.code for rec in self.id_records}
 
     # ── главный метод ──
 
     def analyze(self, source_code: str) -> list[Token]:
         """Анализирует исходный текст построчно."""
         # Сброс
-        self.tokens = []
-        self.tokens_by_line = []
-        self.errors = []
-        self.id_table = {}
-        self.num_table = {}
-        self.str_table = {}
-        self._id_counter = 0
-        self._num_counter = 0
-        self._str_counter = 0
+        self.tokens          = []
+        self.tokens_by_line  = []
+        self.errors          = []
+        self.id_records      = []
+        self._id_map         = {}
+        self._nesting_level  = 0
+        self.num_table       = {}
+        self.str_table       = {}
+        self._id_counter     = 0
+        self._num_counter    = 0
+        self._str_counter    = 0
 
         self._state = StartState('', self)
-        lines = source_code.split('\n')
-
-        for line in lines:
+        for line in source_code.split('\n'):
             self._current_line_tokens = []
             for symbol in line:
                 self._state.execute(symbol)

@@ -1,5 +1,16 @@
 ТАБЛИЦА ЧИСЛОВЫХ КОНСТАНТ (N)
-Константа            Код
-─────────────────────────
-15                   1
-4                    2
+Константа              Код    Тип
+────────────────────────────────────────
+15                     1      integer
+4                      2      integer
+123.45                 3      fixed-point
+.25                    4      fixed-point
+25.                    5      fixed-point
+1.23e-5                6      floating-point
+1.5E+10                7      floating-point
+1                      8      integer
+3                      9      integer
+10                     10     integer
+0                      11     integer
+42                     12     integer
+100                    13     integer

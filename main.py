@@ -135,31 +135,44 @@ def print_tables(analyzer: LexicalAnalyzer):
     )
 
     sep("ТАБЛИЦА ИДЕНТИФИКАТОРОВ (I) — временная")
-    if analyzer.id_table:
-        print_two_col_table(
-            sorted(analyzer.id_table.items(), key=lambda x: x[1]),
-            "Идентификатор", "Код", 30, 5
-        )
+    if analyzer.id_records:
+        print(f"  {'Код':<6} {'Идентификатор':<20} {'Ур. вл.':<10} Тип")
+        print("  " + "─" * 50)
+        for rec in analyzer.id_records:
+            print(f"  {rec.code:<6} {rec.name:<20} {rec.nesting_level:<10} {rec.id_type}")
     else:
         print("  (пусто)")
 
     sep("ТАБЛИЦА ЧИСЛОВЫХ КОНСТАНТ (N) — временная")
     if analyzer.num_table:
-        print_two_col_table(
-            sorted(analyzer.num_table.items(), key=lambda x: x[1]),
-            "Константа", "Код", 30, 5
-        )
+        print(f"  {'Константа':<25} {'Код':<6} Тип")
+        print(f"  {'─'*25} {'─'*6} {'─'*14}")
+        for val, (code, typ) in sorted(analyzer.num_table.items(), key=lambda x: x[1][0]):
+            print(f"  {val:<25} {code:<6} {typ}")
     else:
         print("  (пусто)")
 
     sep("ТАБЛИЦА СТРОКОВЫХ КОНСТАНТ (C) — временная")
     if analyzer.str_table:
-        print_two_col_table(
-            sorted(analyzer.str_table.items(), key=lambda x: x[1]),
-            "Строка", "Код", 30, 5
-        )
+        print(f"  {'Строка':<35} {'Код':<6} Тип")
+        print(f"  {'─'*35} {'─'*6} {'─'*8}")
+        for val, (code, typ) in sorted(analyzer.str_table.items(), key=lambda x: x[1][0]):
+            display = val if len(val) <= 33 else val[:30] + '...'
+            print(f"  {display:<35} {code:<6} {typ}")
     else:
         print("  (пусто)")
+
+    sep("РАСПОЗНАВАЕМЫЕ ТИПЫ КОНСТАНТ (срез языка JS)")
+    print()
+    print(f"  {'Тип':<28} {'Правило записи':<30} {'Примеры':<22} Класс")
+    print(f"  {'-'*28} {'-'*30} {'-'*22} {'-'*5}")
+    for tname, rule, examples, cls in [
+        ("Целое число",         "Последовательность цифр",      "15, 42, 100",      "N"),
+        ("Фиксированная точка", "Цифры с одной точкой",         "3.14, .25, 25.",   "N"),
+        ("Плавающая точка",     "Цифры + e/E [+/-] цифры",      "1.23e-5, 1.5E+10", "N"),
+        ("Строковая константа", 'Символы в " " или \' \'',     '"текст", \'abc\'',    "C"),
+    ]:
+        print(f"  {tname:<28} {rule:<30} {examples:<22} {cls}")
 
 
 def print_example_parse(analyzer: LexicalAnalyzer, source_code: str):
@@ -207,16 +220,20 @@ def save_tables(analyzer: LexicalAnalyzer, source_code: str, prefix='output'):
     write(f"{prefix}_R_separators.txt", ''.join(lines))
 
     # Временные таблицы
-    lines = ["ТАБЛИЦА ИДЕНТИФИКАТОРОВ (I)\n", f"{'Идентификатор':<20} Код\n", "─"*25+"\n"]
-    lines += [f"{n:<20} {c}\n" for n, c in sorted(analyzer.id_table.items(), key=lambda x: x[1])]
-    write(f"{prefix}_I_identifiers.txt", ''.join(lines))
+    hdr = f"{'Код':<6} {'Идентификатор':<20} {'Ур. вл.':<10} Тип\n" + "─"*50 + "\n"
+    rows = "".join(
+        f"{rec.code:<6} {rec.name:<20} {rec.nesting_level:<10} {rec.id_type}\n"
+        for rec in analyzer.id_records
+    )
+    write(f"{prefix}_I_identifiers.txt",
+          "ТАБЛИЦА ИДЕНТИФИКАТОРОВ (I)\n" + hdr + rows)
 
-    lines = ["ТАБЛИЦА ЧИСЛОВЫХ КОНСТАНТ (N)\n", f"{'Константа':<20} Код\n", "─"*25+"\n"]
-    lines += [f"{v:<20} {c}\n" for v, c in sorted(analyzer.num_table.items(), key=lambda x: x[1])]
+    lines = ["ТАБЛИЦА ЧИСЛОВЫХ КОНСТАНТ (N)\n", f"{'Константа':<22} {'Код':<6} Тип\n", "─"*40+"\n"]
+    lines += [f"{v:<22} {c:<6} {t}\n" for v, (c, t) in sorted(analyzer.num_table.items(), key=lambda x: x[1][0])]
     write(f"{prefix}_N_numbers.txt", ''.join(lines))
 
-    lines = ["ТАБЛИЦА СТРОКОВЫХ КОНСТАНТ (C)\n", f"{'Строка':<30} Код\n", "─"*35+"\n"]
-    lines += [f"{v:<30} {c}\n" for v, c in sorted(analyzer.str_table.items(), key=lambda x: x[1])]
+    lines = ["ТАБЛИЦА СТРОКОВЫХ КОНСТАНТ (C)\n", f"{'Строка':<32} {'Код':<6} Тип\n", "─"*45+"\n"]
+    lines += [f"{v:<32} {c:<6} {t}\n" for v, (c, t) in sorted(analyzer.str_table.items(), key=lambda x: x[1][0])]
     write(f"{prefix}_C_strings.txt", ''.join(lines))
 
     # Внутреннее представление — построчно
