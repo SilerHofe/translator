@@ -53,6 +53,7 @@ def _run_lab2() -> dict:
     return {
         'elements': [{'kind': e.kind, 'value': e.display()} for e in elems],
         'rpn_string': rpn_str,
+        'trace': t.trace[:80],  # первые 80 шагов для GUI
     }
 
 def _run_lab3() -> dict:
@@ -439,7 +440,8 @@ textarea:focus { outline: none; border-color: var(--blue); }
     <div class="tabs">
       <div class="tab active" onclick="l2tab(0)">Элементы ОПЗ</div>
       <div class="tab" onclick="l2tab(1)">Строка ОПЗ</div>
-      <div class="tab" onclick="l2tab(2)">Таблица приоритетов</div>
+      <div class="tab" onclick="l2tab(2)">Трассировка стека</div>
+      <div class="tab" onclick="l2tab(3)">Таблица приоритетов</div>
     </div>
     <div class="card-body" id="l2-body"></div>
   </div>
@@ -736,6 +738,41 @@ function renderL2(tab) {
   } else if (tab === 1) {
     el.innerHTML = `<div class="sec">Строка ОПЗ</div><div class="code" style="white-space:pre-wrap;word-break:break-all">${e(d.rpn_string)}</div>`;
   } else if (tab === 2) {
+    const trace = d.trace || [];
+    const rows = trace.map((s,i) => {
+      const mkStack = arr => arr.length
+        ? arr.map(op=>`<span class="rpn rp-ar" style="font-size:10px;padding:1px 5px">${e(op)}</span>`).join(' ')
+        : '<span style="color:var(--text3);font-size:11px">∅</span>';
+      const outAdded = (s.output_added||[]).length
+        ? s.output_added.map(v=>`<span class="rpn rp-op" style="font-size:10px;padding:1px 5px">${e(v)}</span>`).join(' ')
+        : '<span style="color:var(--text3);font-size:11px">—</span>';
+      return `<tr>
+        <td style="text-align:center;color:var(--text3);font-size:11px">${i+1}</td>
+        <td><span class="chip t${s.tc}" style="font-size:11px">${e(s.val)}</span></td>
+        <td style="max-width:160px">${mkStack(s.stack_before)}</td>
+        <td style="max-width:160px">${mkStack(s.stack_after)}</td>
+        <td>${outAdded}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="sec">Трассировка алгоритма Дейкстры — состояние стека на каждом шаге</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5">
+        Операнды сразу идут в выходную строку. Операции помещаются в стек и выталкиваются по приоритету.
+        Показаны первые ${trace.length} шагов из всего потока.
+      </div>
+      <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:36px">#</th>
+          <th>Токен</th>
+          <th>Стек до</th>
+          <th>Стек после</th>
+          <th>Добавлено в выход</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+  } else if (tab === 3) {
     const rows = PRIO_TABLE.map(r=>`<tr><td>${e(r[0])}</td><td style="text-align:center">${r[1]}</td><td style="color:var(--text2)">${r[2]}</td></tr>`).join('');
     el.innerHTML = `<div class="sec">Таблица приоритетов (адаптация табл. 2.8 методички)</div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Элемент</th><th>Приор.</th><th>Примечание</th></tr></thead><tbody>${rows}</tbody></table></div>`;

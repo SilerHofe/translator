@@ -128,6 +128,7 @@ class RpnTranslator:
     def reset(self):
         self.output = []
         self.stack  = []
+        self.trace  = []   # трассировка шагов для GUI
         self._lbl_counter   = 0
         self._proc_counter  = 0
         self._nest_level    = 0
@@ -202,7 +203,20 @@ class RpnTranslator:
         i = 0
         n = len(tokens)
         while i < n:
+            tok = tokens[i]
+            stack_before = [s.op for s in self.stack]
+            out_before = len(self.output)
             i = self._step(tokens, i, n)
+            # Записываем трассировку шага
+            new_out = [e.display() for e in self.output[out_before:]]
+            self.trace.append({
+                'token': f"{tok.token_class}{tok.code}={tok.value}",
+                'tc': tok.token_class,
+                'val': tok.value,
+                'stack_before': stack_before,
+                'stack_after': [s.op for s in self.stack],
+                'output_added': new_out,
+            })
         # Вытолкнуть остаток стека
         while self.stack:
             item = self._pop()

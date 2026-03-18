@@ -3,3 +3,8 @@
 ────────────────────────────────────────
 15                     1      integer
 4                      2      integer
+123.45                 3      fixed-point
+0                      4      integer
+42                     5      integer
+1                      6      integer
+100                    7      integer
