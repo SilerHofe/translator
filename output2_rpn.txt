@@ -1,0 +1,57 @@
+ОБРАТНАЯ ПОЛЬСКАЯ ЗАПИСЬ (ОПЗ)
+Лабораторная работа №2  |  Вариант 10: JavaScript → R
+───────────────────────────────────────────────────────
+
+Строка ОПЗ:
+x 1ТИП КО y 1ТИП КО x 15 := y 4 := sum 1ТИП КО mult 1ТИП КО sum x y + := mult y x * := sum mult > M1 УПЛ "aloha" M2 УПЛ M3 БП M2: : "hohma" "Сумма:" sum + "Произведение:" mult +
+
+───────────────────────────────────────────────────────
+№     Элемент                Вид
+───────────────────────────────────────────────────────
+1     x                      operand
+2     1ТИП                   ТИП
+3     КО                     КО
+4     y                      operand
+5     1ТИП                   ТИП
+6     КО                     КО
+7     x                      operand
+8     15                     operand
+9     :=                     assign
+10    y                      operand
+11    4                      operand
+12    :=                     assign
+13    sum                    operand
+14    1ТИП                   ТИП
+15    КО                     КО
+16    mult                   operand
+17    1ТИП                   ТИП
+18    КО                     КО
+19    sum                    operand
+20    x                      operand
+21    y                      operand
+22    +                      op
+23    :=                     assign
+24    mult                   operand
+25    y                      operand
+26    x                      operand
+27    *                      op
+28    :=                     assign
+29    sum                    operand
+30    mult                   operand
+31    >                      op
+32    M1                     operand
+33    УПЛ                    УПЛ
+34    "aloha"                operand
+35    M2                     operand
+36    УПЛ                    УПЛ
+37    M3                     operand
+38    БП                     БП
+39    M2:                    operand
+40    :                      label
+41    "hohma"                operand
+42    "Сумма:"               operand
+43    sum                    operand
+44    +                      op
+45    "Произведение:"        operand
+46    mult                   operand
+47    +                      op

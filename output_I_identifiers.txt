@@ -1,15 +1,7 @@
 ТАБЛИЦА ИДЕНТИФИКАТОРОВ (I)
 Код    Идентификатор        Ур. вл.    Тип
 ──────────────────────────────────────────────────
-1      a1                   0          integer
-2      a2                   0          integer
-3      x                    0          fixed-point
-4      str                  0          string
-5      sum                  0          unknown
-6      mult                 0          unknown
-7      square               0          unknown
-8      result               1          unknown
-9      sq                   0          unknown
-10     i                    0          integer
-11     arr                  0          unknown
-12     array                0          unknown
+1      x                    0          integer
+2      y                    0          integer
+3      sum                  0          unknown
+4      mult                 0          unknown
