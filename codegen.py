@@ -181,7 +181,7 @@ class CodeGenerator:
         if kind == 'operand':
             lbl = self._label_name(e)
             if lbl:
-                # Определение метки — регистрируем STR, не пишем в код
+                # Определение метки M1: — регистрируем STR
                 self.label_table[lbl] = self.STR
             else:
                 self._push(val)
@@ -406,16 +406,38 @@ class CodeGenerator:
         c = _unwrap(cond)
         self._emit(f"while ({c}) {{")
         self._indent += 1
-        pos_bp = pos_mend - 1
+
+        # Ищем БП который ссылается именно на m_start (не на любой БП)
+        # Это последний БП в теле перед M_end
+        pos_bp = None
         for i in range(self._pos, pos_mend):
             if i < len(self._elems) and self._elems[i].kind == 'БП':
-                pos_bp = i
-                break
-        body_end = pos_bp - 1
+                # Проверяем что перед ним операнд m_start
+                if (i > 0 and self._elems[i-1].kind == 'operand' and
+                        self._elems[i-1].value == m_start):
+                    pos_bp = i
+                    break
+
+        # Если не нашли точного совпадения — берём последний БП
+        if pos_bp is None:
+            for i in range(pos_mend - 1, self._pos - 1, -1):
+                if i < len(self._elems) and self._elems[i].kind == 'БП':
+                    pos_bp = i
+                    break
+
+        if pos_bp is None:
+            pos_bp = pos_mend - 1
+
+        # body_end = позиция перед операндом m_start (который стоит перед БП)
+        body_end = pos_bp - 1  # pos_bp-1 = bare label m_start
+        # Нужно остановиться ДО bare label m_start, т.е. до pos_bp-1
         while self._pos < body_end:
             self._step()
+
         self._indent -= 1
         self._emit("}")
+
+        # Пропускаем: operand m_start + БП + M_end: + :
         if self._pos < len(self._elems) and self._elems[self._pos].kind == 'operand':
             self._pos += 1
         if self._pos < len(self._elems) and self._elems[self._pos].kind == 'БП':
