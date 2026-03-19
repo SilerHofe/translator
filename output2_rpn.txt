@@ -3,7 +3,7 @@
 ───────────────────────────────────────────────────────
 
 Строка ОПЗ:
-a1 1ТИП КО a2 1ТИП КО a1 15 := a2 4 := x 1ТИП КО x 123.45 := str 1ТИП КО str "Привет мир" := sum 1ТИП КО sum a1 a2 + := a1 a2 > M1 УПЛ sum a1 a2 + := M2 БП M1: : sum a2 := square 1 1 НП r 1ТИП КО r x x * := r return arr 1ТИП КО arr 0 2АЭМ 42 := arr a1 1 + 2АЭМ 100 :=
+a1 1ТИП КО a2 1ТИП КО a1 15 := a2 4 := x 1ТИП КО x 123.45 := str 1ТИП КО str "Привет мир" := sum 1ТИП КО sum a1 a2 + := a1 a2 > M1 УПЛ sum a1 a2 + := M2 БП M1: : sum a2 := M2: : square 1 1 НП r 1ТИП КО r x x * := r return КП arr 1ТИП КО arr 0 2АЭМ 42 := arr a1 1 + 2АЭМ 100 :=
 
 ───────────────────────────────────────────────────────
 №     Элемент                Вид
@@ -57,32 +57,35 @@ a1 1ТИП КО a2 1ТИП КО a1 15 := a2 4 := x 1ТИП КО x 123.45 := str 
 47    sum                    operand
 48    a2                     operand
 49    :=                     assign
-50    square                 operand
-51    1                      operand
-52    1                      operand
-53    НП                     НП
-54    r                      operand
-55    1ТИП                   ТИП
-56    КО                     КО
-57    r                      operand
-58    x                      operand
-59    x                      operand
-60    *                      op
-61    :=                     assign
-62    r                      operand
-63    return                 return
-64    arr                    operand
-65    1ТИП                   ТИП
-66    КО                     КО
+50    M2:                    operand
+51    :                      label
+52    square                 operand
+53    1                      operand
+54    1                      operand
+55    НП                     НП
+56    r                      operand
+57    1ТИП                   ТИП
+58    КО                     КО
+59    r                      operand
+60    x                      operand
+61    x                      operand
+62    *                      op
+63    :=                     assign
+64    r                      operand
+65    return                 return
+66    КП                     КП
 67    arr                    operand
-68    0                      operand
-69    2АЭМ                   АЭМ
-70    42                     operand
-71    :=                     assign
-72    arr                    operand
-73    a1                     operand
-74    1                      operand
-75    +                      op
-76    2АЭМ                   АЭМ
-77    100                    operand
-78    :=                     assign
+68    1ТИП                   ТИП
+69    КО                     КО
+70    arr                    operand
+71    0                      operand
+72    2АЭМ                   АЭМ
+73    42                     operand
+74    :=                     assign
+75    arr                    operand
+76    a1                     operand
+77    1                      operand
+78    +                      op
+79    2АЭМ                   АЭМ
+80    100                    operand
+81    :=                     assign

@@ -178,11 +178,15 @@ class RpnTranslator:
         Стандартное правило Дейкстры: выталкивать из стека все операции,
         приоритет которых >= incoming_prio, пока не встретим элемент с
         меньшим приоритетом или открывающую скобку (приоритет 0).
+        Блок-операторы (function, if, while) никогда не выталкиваются.
         """
+        protected = {'(', '[', 'if', 'if_else', 'while', 'function', 'Ф', 'АЭМ'}
         while self.stack:
             top = self.stack[-1]
+            if top.op in protected:  # блок-операторы — стоп
+                break
             top_prio = STACK_PRIO.get(top.op, 0)
-            if top_prio == 0:  # открывающий — стоп
+            if top_prio == 0:
                 break
             if top_prio >= incoming_prio:
                 item = self._pop()
@@ -349,9 +353,11 @@ class RpnTranslator:
 
         # Присваивание = (O12) — правоассоциативное, приоритет 2
         if code == 12:
-            # Выталкиваем только строго выше (>2), чтобы = не вытолкнуло =
+            protected = {'(', '[', 'if', 'if_else', 'while', 'function', 'Ф', 'АЭМ'}
             while self.stack:
                 top = self.stack[-1]
+                if top.op in protected:
+                    break
                 tp = STACK_PRIO.get(top.op, 0)
                 if tp == 0 or tp <= 2:
                     break
@@ -418,10 +424,10 @@ class RpnTranslator:
             self._flush_dcl()
             return i + 1
 
-        # Выталкиваем всё до '(', '[', 'if', 'while', 'function'
+        # Выталкиваем всё до '(', '[', 'if', 'if_else', 'while', 'function'
         while self.stack:
             top = self.stack[-1]
-            if top.op in ('(', '[', 'if', 'while', 'function', 'Ф', 'АЭМ'):
+            if top.op in ('(', '[', 'if', 'if_else', 'while', 'function', 'Ф', 'АЭМ'):
                 break
             item = self._pop()
             self._flush_stack_item(item)

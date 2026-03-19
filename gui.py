@@ -53,7 +53,7 @@ def _run_lab2() -> dict:
     return {
         'elements': [{'kind': e.kind, 'value': e.display()} for e in elems],
         'rpn_string': rpn_str,
-        'trace': t.trace[:80],  # первые 80 шагов для GUI
+        'trace': t.trace,
     }
 
 def _run_lab3() -> dict:
@@ -68,7 +68,7 @@ def _run_lab3() -> dict:
         'code_lines': [{'num': l.num, 'text': l.text, 'indent': l.indent} for l in lines],
         'label_table': gen.label_table,
         'P': gen.P,
-        'trace': gen.trace[:40],
+        'trace': gen.trace,
     }
 
 def _run_lab4() -> dict:
@@ -755,14 +755,13 @@ function renderL2(tab) {
       </tr>`;
     }).join('');
     el.innerHTML = `
-      <div class="sec">Трассировка алгоритма Дейкстры — состояние стека на каждом шаге</div>
+      <div class="sec">Трассировка алгоритма Дейкстры — всего ${trace.length} шагов</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;line-height:1.5">
         Операнды сразу идут в выходную строку. Операции помещаются в стек и выталкиваются по приоритету.
-        Показаны первые ${trace.length} шагов из всего потока.
       </div>
-      <div class="tbl-wrap">
+      <div class="tbl-wrap" style="max-height:520px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius)">
       <table class="tbl">
-        <thead><tr>
+        <thead style="position:sticky;top:0;z-index:1;background:var(--bg2)"><tr>
           <th style="width:36px">#</th>
           <th>Токен</th>
           <th>Стек до</th>
@@ -820,9 +819,10 @@ function renderL3(tab) {
       <td style="text-align:center">${s.STR_after}</td>
       <td style="color:var(--text2);font-size:11px">${e(s.code_line||'')}</td>
     </tr>`).join('');
-    el.innerHTML = `<div class="sec">Трассировка МП-автомата (первые ${d.trace.length} шагов)</div>
-      <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Шаг</th><th>Элемент ОПЗ</th><th>Стек</th><th>STR</th><th>Код R</th></tr></thead>
+    el.innerHTML = `<div class="sec">Трассировка МП-автомата (табл. 3.2 методички) — всего ${d.trace.length} шагов</div>
+      <div class="tbl-wrap" style="max-height:520px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius)">
+      <table class="tbl">
+        <thead style="position:sticky;top:0;z-index:1;background:var(--bg2)"><tr><th>Шаг</th><th>Элемент ОПЗ</th><th>Стек</th><th>STR</th><th>Код R</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
   } else if (tab === 2) {
@@ -866,15 +866,16 @@ function renderL4(tab) {
     const tree = d.tree ? renderTree(d.tree, 0) : '<span style="color:var(--text3)">Дерево не построено</span>';
     el.innerHTML = `${alert}<div class="sec">Дерево разбора (рекурсивный спуск)</div><div class="tree">${tree}</div>`;
   } else if (tab === 1) {
-    const rows = d.steps.slice(0,60).map((s,i)=>`<tr>
+    const rows = d.steps.map((s,i)=>`<tr>
       <td>${i+1}</td>
       <td style="font-weight:500;color:var(--blue-text)">${e(s.proc)}</td>
       <td><span class="chip tI">${e(s.token)}</span></td>
       <td style="color:var(--text2);font-size:11px">${e(s.action)}</td>
     </tr>`).join('');
-    el.innerHTML = `<div class="sec">Шаги рекурсивного спуска (первые ${Math.min(d.steps.length,60)} из ${d.steps.length})</div>
-      <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>#</th><th>Процедура</th><th>NXTSYMB</th><th>Действие</th></tr></thead>
+    el.innerHTML = `<div class="sec">Шаги рекурсивного спуска — всего ${d.steps.length} шагов</div>
+      <div class="tbl-wrap" style="max-height:520px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius)">
+      <table class="tbl">
+        <thead style="position:sticky;top:0;z-index:1;background:var(--bg2)"><tr><th>#</th><th>Процедура</th><th>NXTSYMB</th><th>Действие</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`;
   } else if (tab === 2) {
