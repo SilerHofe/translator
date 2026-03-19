@@ -424,10 +424,15 @@ class CodeGenerator:
         return f"while ({c}) {{ ... }}"
 
     def _skip_label(self, lbl: str):
-        """Пропускает пару: operand 'M1:' + label ':'"""
+        """
+        Пропускает пару: operand 'M1:' + label ':'.
+        Заодно регистрирует метку в label_table (STR на момент пропуска).
+        """
         if (self._pos < len(self._elems) and
                 self._elems[self._pos].kind == 'operand' and
                 self._elems[self._pos].value == f"{lbl}:"):
+            # Регистрируем — эта метка указывает на текущую строку кода
+            self.label_table[lbl] = self.STR
             self._pos += 1
         if (self._pos < len(self._elems) and
                 self._elems[self._pos].kind == 'label'):

@@ -15,4 +15,4 @@ square <- function() {
   return(r)
 }
 arr[1] <- 42
-arr[a1 + 1 + 1] <- 100
+arr[a1 + 1] <- 100
